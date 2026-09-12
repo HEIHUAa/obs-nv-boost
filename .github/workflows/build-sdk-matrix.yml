@@ -1,0 +1,124 @@
+name: Build NVENC SDK Matrix
+
+# 按 NVENC SDK 版本矩阵构建：每个 SDK 版本注入对应 nv-codec-headers tag 头文件，
+# 产出可运行于对应最低驱动版本的编码器插件
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  PLUGIN_NAME: obs-nv-boost
+  MODULE_NAME: obs-nvboost
+  OBS_VERSION: 32.2.0
+
+jobs:
+  windows:
+    name: Windows x64 (SDK ${{ matrix.sdk }})
+    runs-on: windows-2025
+    continue-on-error: true # 8.x/9.x 低版本仅通过编译验证，老卡真机的运行时行为待验证
+    defaults:
+      run:
+        shell: pwsh
+    strategy:
+      matrix:
+        # 每个 SDK 大版本只取小版本最新 tag（8.x→n8.2 / 9.x→n9.1 / 11.x→n11.1 / 12.x→n12.2 / 13.x→n13.1）
+        sdk: ['8.2', '9.1', '10.0', '11.1', '12.2', '13.1']
+
+    steps:
+      - name: Cache OBS Studio Source
+        id: cache-obs
+        uses: actions/cache@v5
+        with:
+          path: obs-studio
+          key: obs-studio-${{ env.OBS_VERSION }}-${{ runner.os }}
+
+      - name: Checkout OBS Studio
+        if: steps.cache-obs.outputs.cache-hit != 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: obsproject/obs-studio
+          ref: ${{ env.OBS_VERSION }}
+          path: obs-studio
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Checkout Plugin
+        uses: actions/checkout@v5
+        with:
+          path: obs-studio/plugins/${{ env.PLUGIN_NAME }}
+
+      - name: Cache nv-codec-headers
+        id: cache-nvcodec
+        uses: actions/cache@v5
+        with:
+          path: obs-studio/plugins/${{ env.PLUGIN_NAME }}/third-party/nv-codec-headers
+          key: nv-codec-headers-${{ runner.os }}
+
+      - name: Setup nv-codec-headers
+        if: steps.cache-nvcodec.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/FFmpeg/nv-codec-headers.git third-party/nv-codec-headers
+        working-directory: ${{ github.workspace }}/obs-studio/plugins/${{ env.PLUGIN_NAME }}
+
+      - name: Prepare NVENC SDK Headers (${{ matrix.sdk }})
+        run: |
+          .\scripts\Setup-FFnvcodec.ps1 -SdkVersion ${{ matrix.sdk }}
+        working-directory: ${{ github.workspace }}/obs-studio/plugins/${{ env.PLUGIN_NAME }}
+
+      - name: Add Plugin to OBS CMake
+        run: |
+          $cmakeFile = "plugins/CMakeLists.txt"
+          $line = 'add_subdirectory("${{ env.PLUGIN_NAME }}" obs-nvboost-build)'
+          if (-not (Select-String -Path $cmakeFile -Pattern $line -SimpleMatch -Quiet)) {
+            $line | Out-File -FilePath $cmakeFile -Encoding utf8 -Append
+          }
+        working-directory: ${{ github.workspace }}/obs-studio
+
+      - name: Cache CMake Build
+        id: cache-cmake
+        uses: actions/cache@v5
+        with:
+          path: obs-studio/build_x64
+          key: cmake-nvboost-${{ matrix.sdk }}-${{ runner.os }}-${{ env.OBS_VERSION }}-${{ hashFiles('obs-studio/plugins/obs-nv-boost/**/CMakeLists.txt') }}
+          restore-keys: |
+            cmake-nvboost-${{ matrix.sdk }}-${{ runner.os }}-${{ env.OBS_VERSION }}-
+            cmake-nvboost-${{ matrix.sdk }}-${{ runner.os }}-
+
+      # SDK 切换只改变 FFnvcodec_INCLUDE_DIR，配置缓存命中时也必须重新注入
+      - name: Configure CMake
+        run: |
+          $includeDir = "${{ github.workspace }}/obs-studio/plugins/${{ env.PLUGIN_NAME }}/_deps/ffnvcodec-*/include"
+          $includeDir = (Resolve-Path $includeDir)[0].Path
+          # ENABLE_BROWSER=OFF: 跳过 CEF deps 下载；ENABLE_NVENC=OFF: 禁用官方 obs-nvenc
+          # （其强制 SDK 12 会阻塞低版本矩阵，且本项目即官方 NVENC 的替代品）
+          cmake --preset windows-x64 -DENABLE_BROWSER=OFF -DENABLE_NVENC=OFF -DFFnvcodec_INCLUDE_DIR="$includeDir"
+        working-directory: ${{ github.workspace }}/obs-studio
+
+      - name: Build
+        run: |
+          cmake --build --preset windows-x64 --config Release --target ${{ env.MODULE_NAME }} ${{ env.MODULE_NAME }}-test
+        working-directory: ${{ github.workspace }}/obs-studio
+
+      - name: Package Release
+        run: |
+          $ModuleName = "${{ env.MODULE_NAME }}"
+          $BuildDir = "${{ github.workspace }}/obs-studio/build_x64"
+          $ReleasePackage = "${{ github.workspace }}/package/release"
+          New-Item -ItemType Directory -Path "$ReleasePackage/bin/64bit" -Force
+          New-Item -ItemType Directory -Path "$ReleasePackage/obs-plugins/64bit" -Force
+          New-Item -ItemType Directory -Path "$ReleasePackage/data/obs-plugins/$ModuleName/locale" -Force
+          Copy-Item "$BuildDir/plugins/${{ env.PLUGIN_NAME }}/obs-nvboost-build/Release/$ModuleName.dll" "$ReleasePackage/obs-plugins/64bit/"
+          Copy-Item "$BuildDir/plugins/${{ env.PLUGIN_NAME }}/obs-nvboost-build/Release/$ModuleName-test.exe" "$ReleasePackage/bin/64bit/"
+          Copy-Item "data/locale/*.ini" "$ReleasePackage/data/obs-plugins/$ModuleName/locale/"
+          Compress-Archive -Path "$ReleasePackage/*" -DestinationPath "${{ github.workspace }}/package/${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-windows-x64.zip"
+        working-directory: ${{ github.workspace }}/obs-studio/plugins/${{ env.PLUGIN_NAME }}
+
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-windows-x64
+          path: ${{ github.workspace }}/package/release/**/*

@@ -1,0 +1,27 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "any-x64",
+      "displayName": "Any x64",
+      "description": "在 OBS 源码树内挂载构建（见 scripts/Build.ps1）；FFnvcodec_INCLUDE_DIR 由 Setup-FFnvcodec.ps1 的产物注入",
+      "binaryDir": "${sourceDir}/build_x64",
+      "cacheVariables": {
+        "ENABLE_HEVC": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "any-x64",
+      "configurePreset": "any-x64",
+      "displayName": "Any build 64-bit",
+      "configuration": "RelWithDebInfo"
+    }
+  ]
+}

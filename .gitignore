@@ -1,0 +1,6 @@
+_deps/
+build_*/
+package/
+out/
+third-party/nv-codec-headers/
+log/*
