@@ -299,6 +299,8 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 		enc->props.temporal_aq = false;
 		enc->props.adaptive_quantization = false;
 		enc->props.chroma_qp_offset = 0;
+		/* 时域滤波同样修改像素，与无损互斥；忽略旧配置残留值 */
+		enc->props.tf_level = 0;
 		/* 驱动在无损下静默忽略加权预测（实测 PPS weighted_pred_flag=0），显式关闭 */
 		enc->props.weightp = false;
 	}
@@ -324,7 +326,9 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 
 	enc->config = preset_config.presetCfg;
 
-	int keyint = (int)enc->props.keyint_sec * voi->fps_num / voi->fps_den;
+	/* 秒→帧用 int64 中间量防溢出；NVENC gopLength 为 uint32，钳到 INT32_MAX */
+	int64_t keyint_64 = enc->props.keyint_sec * (int64_t)voi->fps_num / voi->fps_den;
+	int keyint = keyint_64 > INT32_MAX ? INT32_MAX : (int)keyint_64;
 	get_user_arg_int(enc, "keyint", &keyint);
 
 	uint32_t gop_size = keyint > 0 ? keyint : 250;
@@ -546,6 +550,55 @@ static bool init_encoder_base(struct nvenc_data *enc, obs_data_t *settings)
 	}
 #endif
 #endif /* NVENC_12_2_OR_LATER */
+
+	/* SDK 13.1 层级 B 帧参考：头文件约定的前置条件苛刻（enablePTD=1 本项目恒成立），
+	 * 任一不满足就回退到 middle/disabled，避免驱动侧未定义行为 */
+#ifdef NVENC_13_1_OR_LATER
+	if (enc->props.bframe_ref_mode == NV_ENC_BFRAME_REF_MODE_HIERARCHICAL) {
+		const int frames_p = (int)enc->props.bf + 1; /* frameIntervalP 须为 2^n（n≤5） */
+		const int bref_caps = nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_BFRAME_REF_MODE);
+		bool ok = (bref_caps & NV_ENC_BFRAME_REF_MODE_HIERARCHICAL) != 0;
+
+		/* 即 bf ∈ {0,1,3,7,15,31}；UHQ tune 强制 bf=4 时同样会被拦下 */
+		if ((frames_p & (frames_p - 1)) != 0 || frames_p > 32) {
+			warn("Hierarchical b-ref requires b-frames + 1 to be a power of two (max 31), got %d.",
+			     (int)enc->props.bf);
+			ok = false;
+		}
+		if (lookahead) {
+			warn("Hierarchical b-ref conflicts with lookahead, disabling hierarchical b-ref.");
+			ok = false;
+		}
+		if (nv_multipass != NV_ENC_MULTI_PASS_DISABLED) {
+			warn("Hierarchical b-ref conflicts with multi-pass, disabling hierarchical b-ref.");
+			ok = false;
+		}
+#ifdef NVENC_12_1_OR_LATER
+		{
+			const int64_t se = enc->props.split_encode;
+			if (se == NV_ENC_SPLIT_AUTO_FORCED_MODE || se == NV_ENC_SPLIT_TWO_FORCED_MODE ||
+			    se == NV_ENC_SPLIT_THREE_FORCED_MODE
+#ifdef NVENC_13_0_OR_LATER
+			    || se == NV_ENC_SPLIT_FOUR_FORCED_MODE
+#endif
+			) {
+				warn("Hierarchical b-ref conflicts with forced split encoding, "
+				     "disabling hierarchical b-ref.");
+				ok = false;
+			}
+		}
+#endif
+		if (ok) {
+			/* 层级参考要求关闭 I/B 帧方向自适应 */
+			enc->config.rcParams.disableIadapt = 1;
+			enc->config.rcParams.disableBadapt = 1;
+		} else {
+			enc->props.bframe_ref_mode = (bref_caps & NV_ENC_BFRAME_REF_MODE_MIDDLE)
+							     ? NV_ENC_BFRAME_REF_MODE_MIDDLE
+							     : NV_ENC_BFRAME_REF_MODE_DISABLED;
+		}
+	}
+#endif
 
 	/* -------------------------- */
 	/* log settings	              */

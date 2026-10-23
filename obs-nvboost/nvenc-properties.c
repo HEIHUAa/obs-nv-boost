@@ -1,5 +1,7 @@
 #include "nvenc-internal.h"
 
+#include <limits.h>
+
 #include <util/dstr.h> /* astrcmpi */
 
 /* ---------------------------------------------------------------------------
@@ -192,10 +194,12 @@ static void update_rc_visibility(obs_properties_t *ppts, obs_data_t *settings)
 	obs_property_set_visible(obs_properties_get(ppts, "qp_max"), rc_bounded);
 	obs_property_set_visible(obs_properties_get(ppts, "qp_init"), rc_bounded);
 	obs_property_set_visible(obs_properties_get(ppts, "vbv_bufsize"), rc_bounded);
+	obs_property_set_visible(obs_properties_get(ppts, "filler_data"), astrcmpi(rc, "CBR") == 0);
 	obs_property_set_visible(obs_properties_get(ppts, "chroma_qp_offset"), !lossless);
 	obs_property_set_visible(obs_properties_get(ppts, "preset"), !lossless);
 	obs_property_set_visible(obs_properties_get(ppts, "tune"), !lossless);
 	obs_property_set_visible(obs_properties_get(ppts, "temporal_aq"), !lossless);
+	obs_property_set_visible(obs_properties_get(ppts, "tf_level"), !lossless);
 	/* 无损下驱动会静默忽略加权预测（PPS weighted_pred_flag=0），隐藏该选项避免误导 */
 	obs_property_set_visible(obs_properties_get(ppts, "weightp"), !lossless);
 	/* 空域 AQ 在所有量化模式下可选（无损除外），默认关闭并带 (2D不推荐) 警告 */
@@ -436,7 +440,7 @@ static obs_properties_t *build_inter_frame_group(enum codec_type codec)
 	obs_property_t *p;
 	struct encoder_caps *caps = get_encoder_caps(codec);
 
-	obs_properties_add_int(g, "keyint_sec", obs_module_text("KeyframeIntervalSec"), 0, 10, 1);
+	obs_properties_add_int(g, "keyint_sec", obs_module_text("KeyframeIntervalSec"), 0, INT_MAX, 1);
 
 	p = obs_properties_add_bool(g, "strict_gop", obs_module_text("StrictGOP"));
 	obs_property_set_long_description(p, obs_module_text("StrictGOP.ToolTip"));

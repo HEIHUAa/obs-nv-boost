@@ -1,8 +1,11 @@
 ﻿# Build-Release.ps1 - 按 NVENC SDK 版本矩阵批量构建并打包插件
 #
 # 用法:
-#   .\scripts\Build-Release.ps1                                    # 默认矩阵 8.2/9.1/10.0/11.1/12.2/13.1
+#   .\scripts\Build-Release.ps1                                    # 默认矩阵 8.2/9.1/10.0/11.1/12.0/12.1/12.2/13.0/13.1
 #   .\scripts\Build-Release.ps1 -SdkVersions 12.2,13.1            # 只构建指定版本
+#
+# 只编译有功能差异的版本（12.0→AV1、12.1→split encode、13.0→HDR 元数据透传）；
+# 无功能差异的中间小版本（8.0/8.1/9.0/11.0）不编译，见 README 矩阵表。
 #
 # 流程(每个 SDK 版本): 准备头文件 -> 干净重编插件 -> 复制产物到 release/sdk-<ver>/
 # 打包布局与 obs-qsv-onevpl-boost 的 release/<variant>/ 一致:
@@ -10,7 +13,7 @@
 #   release/sdk-<ver>/bin/64bit/obs-nvboost-test.exe
 #   release/sdk-<ver>/data/obs-plugins/obs-nvboost/locale/*.ini
 param(
-    [string[]]$SdkVersions = @("8.2", "9.1", "10.0", "11.1", "12.2", "13.1"),
+    [string[]]$SdkVersions = @("8.2", "9.1", "10.0", "11.1", "12.0", "12.1", "12.2", "13.0", "13.1"),
     [string]$ObsPath = "H:\GitHub\obs-studio",
     [string]$Config = "Release"
 )

@@ -13,16 +13,19 @@
 
 ### SDK 版本矩阵（为什么每个驱动对应一个 DLL）
 
-NVENC 的 ABI 与 Video Codec SDK 版本绑定：插件编译时使用的 SDK 头文件版本必须不超过运行机器驱动所支持的 API 版本。本项目按下列矩阵各编译一个 DLL，按需选用：
+NVENC 的 ABI 与 Video Codec SDK 版本绑定：插件编译时使用的 SDK 头文件版本必须不超过运行机器驱动所支持的 API 版本。本项目按下列矩阵各编译一个 DLL；选取表中「Windows 最低驱动」不高于你当前驱动版本的最后一行即可：
 
-| SDK 版本 | Windows 最低驱动 | 支持功能                             |
-| -------- |  ---------------- | ------------------------------------ |
-| 8.2      | 397.93           | 无 tuning / multi-pass / AV1         |
-| 9.1      | 436.15           | 无 AV1                               |
-| 10.0     | 450.51           | 引入 tuning、P1-P7 preset            |
-| 11.1     | 471.41           | 引入`cb/crQPIndexOffset`             |
-| 12.2     | 551.76           | 引入 AV1（12.0 起）、temporal filter |
-| 13.1     | 610.0            | 最新 SDK                             |
+| SDK 版本 | Windows 最低驱动 | 支持功能                                   |
+| -------- | ---------------- | ------------------------------------------ |
+| 8.2      | 397.93           | 无 tuning / multi-pass / AV1               |
+| 9.1      | 436.15           | 无 AV1                                     |
+| 10.0     | 450.51           | 引入 tuning、P1-P7 preset                  |
+| 11.1     | 471.41           | 引入`cb/crQPIndexOffset`                   |
+| 12.0     | 527.41           | 引入 AV1                                   |
+| 12.1     | 546.01           | 引入 split encode                          |
+| 12.2     | 551.76           | 引入 UHQ tune、单向 B 帧、temporal filter  |
+| 13.0     | 570.0            | 引入 HDR 元数据透传、H.264 high10、tfLevel |
+| 13.1     | 610.0            | 引入层级 B 帧参考（AV1）；最新 SDK         |
 
 ### 下载
 
@@ -38,7 +41,7 @@ NVENC 的 ABI 与 Video Codec SDK 版本绑定：插件编译时使用的 SDK �
 
 前置条件：Windows、Git、Visual Studio Build Tools（含 CMake，脚本会从 VS 安装目录自动定位，找不到再回退 PATH）、OBS Studio 源码树（推荐 32.2.0，含子模块）。脚本默认使用 `H:\GitHub\obs-studio`，如路径不同请给所有脚本传 `-ObsPath <路径>`。
 
-1. **一键矩阵构建 + 打包**（6 个 SDK 版本全部构建，产物进 `release\`）：
+1. **一键矩阵构建 + 打包**（9 个 SDK 版本全部构建，产物进 `release\`）：
    
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts\Build-Release.ps1
@@ -79,16 +82,19 @@ This is an NVIDIA NVENC encoder plugin for OBS Studio (`obs-nvboost`), derived f
 
 ### SDK Version Matrix (why one DLL per driver)
 
-The NVENC ABI is tied to the Video Codec SDK version: the SDK headers a plugin is compiled with must not exceed the API version supported by the driver on the target machine. This project builds one DLL per entry of the following matrix; pick as needed:
+The NVENC ABI is tied to the Video Codec SDK version: the SDK headers a plugin is compiled with must not exceed the API version supported by the driver on the target machine. This project builds one DLL per entry of the following matrix; pick the last row whose minimum Windows driver does not exceed your installed driver:
 
-| SDK Version | Minimum Windows driver | Supported features                           |
-| ----------- | ---------------------- | -------------------------------------------- |
-| 8.2         | 397.93                 | no tuning / multi-pass / AV1                 |
-| 9.1         | 436.15                 | no AV1                                       |
-| 10.0        | 450.51                 | introduces tuning, P1-P7 presets             |
-| 11.1        | 471.41                 | introduces `cb/crQPIndexOffset`              |
-| 12.2        | 551.76                 | introduces AV1 (since 12.0), temporal filter |
-| 13.1        | 610.0                  | latest SDK                                   |
+| SDK Version | Minimum Windows driver | Supported features                                          |
+| ----------- | ---------------------- | ----------------------------------------------------------- |
+| 8.2         | 397.93                 | no tuning / multi-pass / AV1                                |
+| 9.1         | 436.15                 | no AV1                                                      |
+| 10.0        | 450.51                 | introduces tuning, P1-P7 presets                            |
+| 11.1        | 471.41                 | introduces `cb/crQPIndexOffset`                             |
+| 12.0        | 527.41                 | introduces AV1                                              |
+| 12.1        | 546.01                 | introduces split encode                                     |
+| 12.2        | 551.76                 | introduces UHQ tune, unidirectional B, temporal filter      |
+| 13.0        | 570.0                  | introduces HDR metadata passthrough, H.264 high10, tfLevel  |
+| 13.1        | 610.0                  | introduces hierarchical b-frame reference (AV1); latest SDK |
 
 ### Download
 
@@ -104,7 +110,7 @@ Pick the `sdk-<version>` folder matching your graphics driver, then extract the 
 
 Prerequisites: Windows, Git, Visual Studio Build Tools (includes CMake; the scripts locate it automatically from the Visual Studio installation directory, falling back to PATH if not found), and an OBS Studio source tree (32.2.0 recommended, with submodules). Scripts default to `H:\GitHub\obs-studio`; pass `-ObsPath <path>` to all scripts if yours differs.
 
-1. **One-shot matrix build + packaging** (all 6 SDK versions, artifacts land in `release\`):
+1. **One-shot matrix build + packaging** (all 9 SDK versions, artifacts land in `release\`):
    
    ```powershell
    powershell -NoProfile -ExecutionPolicy Bypass -File scripts\Build-Release.ps1
