@@ -17,7 +17,7 @@ env:
 
 jobs:
   windows:
-    name: Windows x64 (SDK ${{ matrix.sdk }})
+    name: Windows x64 (SDK ${{ matrix.sdk }}, driver ${{ matrix.drv }})
     runs-on: windows-2025
     continue-on-error: true # 8.x/9.x 低版本仅通过编译验证，老卡真机的运行时行为待验证
     defaults:
@@ -25,7 +25,18 @@ jobs:
         shell: pwsh
     strategy:
       matrix:
-        sdk: ['8.2', '9.1', '10.0', '11.1', '12.0', '12.1', '12.2', '13.0', '13.1']
+        # drv: 适用驱动区间「最低驱动-建议上界」，上界不含（= 下一档 SDK 的最低驱动）；
+        # 最高档无上界，用 + 表示。区间值与 README 的 SDK 矩阵表保持一致
+        include:
+          - { sdk: '8.2',  drv: '397.93-436.15' }
+          - { sdk: '9.1',  drv: '436.15-450.51' }
+          - { sdk: '10.0', drv: '450.51-471.41' }
+          - { sdk: '11.1', drv: '471.41-527.41' }
+          - { sdk: '12.0', drv: '527.41-546.01' }
+          - { sdk: '12.1', drv: '546.01-551.76' }
+          - { sdk: '12.2', drv: '551.76-570.0'  }
+          - { sdk: '13.0', drv: '570.0-610.0'   }
+          - { sdk: '13.1', drv: '610.0+'        }
 
     steps:
       - name: Cache OBS Studio Source
@@ -117,11 +128,11 @@ jobs:
           Copy-Item "$BuildDir/plugins/obs-nvboost-build/obs-nvboost/Release/$ModuleName.dll" "$ReleasePackage/obs-plugins/64bit/"
           Copy-Item "$BuildDir/plugins/obs-nvboost-build/obs-nvboost/Release/$ModuleName-test.exe" "$ReleasePackage/bin/64bit/"
           Copy-Item "obs-nvboost/data/locale/*.ini" "$ReleasePackage/data/obs-plugins/$ModuleName/locale/"
-          Compress-Archive -Path "$ReleasePackage/*" -DestinationPath "${{ github.workspace }}/package/${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-windows-x64.zip"
+          Compress-Archive -Path "$ReleasePackage/*" -DestinationPath "${{ github.workspace }}/package/${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-d${{ matrix.drv }}-windows-x64.zip"
         working-directory: ${{ github.workspace }}/obs-studio/plugins/${{ env.PLUGIN_NAME }}
 
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-windows-x64
+          name: ${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-d${{ matrix.drv }}-windows-x64
           path: ${{ github.workspace }}/package/release/**/*

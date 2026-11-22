@@ -29,7 +29,7 @@ NVENC 的 ABI 与 Video Codec SDK 版本绑定：插件编译时使用的 SDK �
 
 ### 下载
 
-前往本仓库的 Releases 页面下载最新稳定发布版，或前往 Actions 页面下载最新构建。每个 SDK 版本对应一个独立的包（`obs-nvboost-sdk<版本>-windows-x64`）。
+前往本仓库的 Releases 页面下载最新稳定发布版，或前往 Actions 页面下载最新构建。每个 SDK 版本对应一个独立的包（`obs-nvboost-sdk<版本>-d<驱动区间>-windows-x64`，如 `obs-nvboost-sdk12.2-d551.76-570.0-windows-x64`）。文件名中的驱动区间即「你的驱动落在哪个区间就选哪份」，上界不含（等于下一档 SDK 的最低驱动），最高档以 `+` 结尾表示无上界。
 
 ### 安装方法
 
@@ -98,7 +98,7 @@ The NVENC ABI is tied to the Video Codec SDK version: the SDK headers a plugin i
 
 ### Download
 
-Go to the Releases page of this repository for the latest stable release, or go to the Actions page for the latest builds. Each SDK version has its own package (`obs-nvboost-sdk<version>-windows-x64`).
+Go to the Releases page of this repository for the latest stable release, or go to the Actions page for the latest builds. Each SDK version has its own package (`obs-nvboost-sdk<version>-d<driver-range>-windows-x64`, e.g. `obs-nvboost-sdk12.2-d551.76-570.0-windows-x64`). The driver range in the filename is exactly the selector: pick the package whose range contains your installed driver; the upper bound is exclusive (it equals the next SDK tier's minimum driver), and the latest tier ends with `+` meaning no upper bound.
 
 ### Installation
 
