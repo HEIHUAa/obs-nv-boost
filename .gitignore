@@ -1,4 +1,5 @@
 _deps/
+_buildtest/
 build_*/
 package/
 out/
