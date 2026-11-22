@@ -17,7 +17,7 @@ env:
 
 jobs:
   windows:
-    name: Windows x64 (SDK ${{ matrix.sdk }}, driver ${{ matrix.drv }})
+    name: Windows x64 (SDK ${{ matrix.sdk }}, min driver ${{ matrix.dmin }}, min GPU ${{ matrix.gpu }})
     runs-on: windows-2025
     continue-on-error: true # 8.x/9.x 低版本仅通过编译验证，老卡真机的运行时行为待验证
     defaults:
@@ -25,18 +25,22 @@ jobs:
         shell: pwsh
     strategy:
       matrix:
-        # drv: 适用驱动区间「最低驱动-建议上界」，上界不含（= 下一档 SDK 的最低驱动）；
-        # 最高档无上界，用 + 表示。区间值与 README 的 SDK 矩阵表保持一致
+        # dmin: 该 SDK 可用的最低 Windows 驱动（不低于它才可用，高于它的任何驱动同样可用），
+        #       产物名以 d<驱动> 标注，数值与 README 的 SDK 矩阵表保持一致
+        # gpu: 最低可用显卡（按该 SDK 最低驱动的显卡支持期推导）：
+        #   kepler  = GTX 600/700 系（R470 为 Kepler 最后的驱动分支）
+        #   maxwell = GTX 750/900 系（R580 为 Maxwell/Pascal/Volta 最后的驱动分支）
+        #   turing  = GTX 16 系 / RTX 20 系（Pascal 在 R580 后停止支持）
         include:
-          - { sdk: '8.2',  drv: '397.93-436.15' }
-          - { sdk: '9.1',  drv: '436.15-450.51' }
-          - { sdk: '10.0', drv: '450.51-471.41' }
-          - { sdk: '11.1', drv: '471.41-527.41' }
-          - { sdk: '12.0', drv: '527.41-546.01' }
-          - { sdk: '12.1', drv: '546.01-551.76' }
-          - { sdk: '12.2', drv: '551.76-570.0'  }
-          - { sdk: '13.0', drv: '570.0-610.0'   }
-          - { sdk: '13.1', drv: '610.0+'        }
+          - { sdk: '8.2',  dmin: '397.93', gpu: 'kepler'  }
+          - { sdk: '9.1',  dmin: '436.15', gpu: 'kepler'  }
+          - { sdk: '10.0', dmin: '450.51', gpu: 'kepler'  }
+          - { sdk: '11.1', dmin: '471.41', gpu: 'kepler'  }
+          - { sdk: '12.0', dmin: '527.41', gpu: 'maxwell' }
+          - { sdk: '12.1', dmin: '546.01', gpu: 'maxwell' }
+          - { sdk: '12.2', dmin: '551.76', gpu: 'maxwell' }
+          - { sdk: '13.0', dmin: '570.0',  gpu: 'maxwell' }
+          - { sdk: '13.1', dmin: '610.0',  gpu: 'turing'  }
 
     steps:
       - name: Cache OBS Studio Source
@@ -128,11 +132,11 @@ jobs:
           Copy-Item "$BuildDir/plugins/obs-nvboost-build/obs-nvboost/Release/$ModuleName.dll" "$ReleasePackage/obs-plugins/64bit/"
           Copy-Item "$BuildDir/plugins/obs-nvboost-build/obs-nvboost/Release/$ModuleName-test.exe" "$ReleasePackage/bin/64bit/"
           Copy-Item "obs-nvboost/data/locale/*.ini" "$ReleasePackage/data/obs-plugins/$ModuleName/locale/"
-          Compress-Archive -Path "$ReleasePackage/*" -DestinationPath "${{ github.workspace }}/package/${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-d${{ matrix.drv }}-windows-x64.zip"
+          Compress-Archive -Path "$ReleasePackage/*" -DestinationPath "${{ github.workspace }}/package/${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-d${{ matrix.dmin }}-windows-x64.zip"
         working-directory: ${{ github.workspace }}/obs-studio/plugins/${{ env.PLUGIN_NAME }}
 
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-d${{ matrix.drv }}-windows-x64
+          name: ${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-d${{ matrix.dmin }}-windows-x64
           path: ${{ github.workspace }}/package/release/**/*
