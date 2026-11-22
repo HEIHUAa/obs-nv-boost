@@ -54,7 +54,7 @@ foreach ($sdk in $SdkVersions) {
     # 此处局部降级为 Continue，成败由 $LASTEXITCODE 判定
     $ErrorActionPreference = "Continue"
     Set-Location $ObsPath
-    & $CMake --preset windows-x64 -DENABLE_BROWSER=OFF -DENABLE_NVENC=OFF -DFFnvcodec_INCLUDE_DIR="$includeDir" 2>&1 |
+    & $CMake --preset windows-x64 -DENABLE_BROWSER=OFF -DENABLE_NVENC=OFF -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF -DFFnvcodec_INCLUDE_DIR="$includeDir" 2>&1 |
         Out-File (Join-Path $ProjectRoot "_buildtest\release-sdk-$sdk-configure.log") -Encoding utf8
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "SDK $sdk configure FAILED"

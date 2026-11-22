@@ -37,7 +37,7 @@ if (-not (Select-String -Path $pluginsCmake -Pattern $mountLine -SimpleMatch -Qu
 # 切换 SDK 后必须强制干净重编插件：MSBuild 增量判定不会因 include dir 变化重编，会产生 stale object
 Remove-Item -Recurse -Force (Join-Path $ObsPath "build_x64\plugins\obs-nvboost-build") -ErrorAction SilentlyContinue
 Set-Location $ObsPath
-& $CMake --preset windows-x64 -DENABLE_BROWSER=OFF -DENABLE_NVENC=OFF -DFFnvcodec_INCLUDE_DIR="$includeDir"
+& $CMake --preset windows-x64 -DENABLE_BROWSER=OFF -DENABLE_NVENC=OFF -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF -DFFnvcodec_INCLUDE_DIR="$includeDir"
 if ($LASTEXITCODE -ne 0) { throw "CMake configure failed" }
 
 # 4. build

@@ -94,7 +94,9 @@ jobs:
           $includeDir = (Resolve-Path $includeDir)[0].Path
           # ENABLE_BROWSER=OFF: 跳过 CEF deps 下载；ENABLE_NVENC=OFF: 禁用官方 obs-nvenc
           # （其强制 SDK 12 会阻塞低版本矩阵，且本项目即官方 NVENC 的替代品）
-          cmake --preset windows-x64 -DENABLE_BROWSER=OFF -DENABLE_NVENC=OFF -DFFnvcodec_INCLUDE_DIR="$includeDir"
+          # CMAKE_COMPILE_WARNING_AS_ERROR=OFF: runner 的 MSVC 比 32.2.0 发布时新，
+          # libobs 老代码会被新警告卡死在 /WX（obs-properties.c C4244）
+          cmake --preset windows-x64 -DENABLE_BROWSER=OFF -DENABLE_NVENC=OFF -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF -DFFnvcodec_INCLUDE_DIR="$includeDir"
         working-directory: ${{ github.workspace }}/obs-studio
 
       - name: Build
