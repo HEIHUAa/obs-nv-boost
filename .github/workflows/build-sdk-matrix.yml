@@ -110,9 +110,11 @@ jobs:
           New-Item -ItemType Directory -Path "$ReleasePackage/bin/64bit" -Force
           New-Item -ItemType Directory -Path "$ReleasePackage/obs-plugins/64bit" -Force
           New-Item -ItemType Directory -Path "$ReleasePackage/data/obs-plugins/$ModuleName/locale" -Force
-          Copy-Item "$BuildDir/plugins/${{ env.PLUGIN_NAME }}/obs-nvboost-build/Release/$ModuleName.dll" "$ReleasePackage/obs-plugins/64bit/"
-          Copy-Item "$BuildDir/plugins/${{ env.PLUGIN_NAME }}/obs-nvboost-build/Release/$ModuleName-test.exe" "$ReleasePackage/bin/64bit/"
-          Copy-Item "data/locale/*.ini" "$ReleasePackage/data/obs-plugins/$ModuleName/locale/"
+          # 根 CMakeLists.txt 入口 add_subdirectory(obs-nvboost)，
+          # 二进制目录为 build_x64/plugins/obs-nvboost-build/obs-nvboost
+          Copy-Item "$BuildDir/plugins/obs-nvboost-build/obs-nvboost/Release/$ModuleName.dll" "$ReleasePackage/obs-plugins/64bit/"
+          Copy-Item "$BuildDir/plugins/obs-nvboost-build/obs-nvboost/Release/$ModuleName-test.exe" "$ReleasePackage/bin/64bit/"
+          Copy-Item "obs-nvboost/data/locale/*.ini" "$ReleasePackage/data/obs-plugins/$ModuleName/locale/"
           Compress-Archive -Path "$ReleasePackage/*" -DestinationPath "${{ github.workspace }}/package/${{ env.MODULE_NAME }}-sdk${{ matrix.sdk }}-windows-x64.zip"
         working-directory: ${{ github.workspace }}/obs-studio/plugins/${{ env.PLUGIN_NAME }}
 
